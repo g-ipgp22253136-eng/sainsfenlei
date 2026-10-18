@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>魔法分类传送带</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+        
+        body {
+            font-family: 'ZCOOL KuaiLe', cursive, sans-serif;
+            background: linear-gradient(to bottom, #a18cd1 0%, #fbc2eb 100%);
+            touch-action: manipulation;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .item-enter {
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        .item-leave-left {
+            animation: flyLeft 0.5s ease-in forwards;
+        }
+
+        .item-leave-right {
+            animation: flyRight 0.5s ease-in forwards;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0) translateY(-50px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        @keyframes flyLeft {
+            100% { transform: translate(-200px, 200px) scale(0.5) rotate(-180deg); opacity: 0; }
+        }
+
+        @keyframes flyRight {
+            100% { transform: translate(200px, 200px) scale(0.5) rotate(180deg); opacity: 0; }
+        }
+
+        .shake {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0%, 100% {transform: translateX(0);}
+            25% {transform: translateX(-10px);}
+            50% {transform: translateX(10px);}
+            75% {transform: translateX(-10px);}
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-4">
+
+    <!-- Header / Score -->
+    <div class="w-full max-w-md flex justify-between items-center bg-white/50 backdrop-blur-md p-4 rounded-3xl shadow-lg mt-4 z-10">
+        <h1 class="text-2xl font-bold text-purple-700">🏭 魔法分类</h1>
+        <div class="text-xl font-bold text-yellow-500 bg-white px-4 py-1 rounded-full shadow">
+            ⭐ <span id="score">0</span>
+        </div>
+    </div>
+
+    <!-- Game Area -->
+    <div class="flex-1 w-full max-w-md flex flex-col items-center justify-center relative">
+        <!-- Topic Indicator -->
+        <div id="topic-title" class="absolute top-10 text-3xl text-white font-bold text-shadow-md">
+            关卡 1: 生物 vs 非生物
+        </div>
+        
+        <!-- Active Item -->
+        <div id="active-item" class="text-9xl bg-white/80 p-8 rounded-full shadow-2xl item-enter flex items-center justify-center w-48 h-48 border-4 border-dashed border-purple-400">
+            🐶
+        </div>
+        <div id="item-name" class="mt-4 text-3xl font-bold text-white bg-purple-500/50 px-6 py-2 rounded-full">
+            小狗
+        </div>
+    </div>
+
+    <!-- Classification Buttons (Bins) -->
+    <div class="w-full max-w-md flex justify-between gap-4 mb-8">
+        <button onclick="sortItem('left')" id="btn-left" class="flex-1 bg-gradient-to-b from-green-400 to-green-600 text-white text-3xl py-8 rounded-3xl shadow-xl transform transition active:scale-95 border-4 border-white/50">
+            🌿 生物
+        </button>
+        <button onclick="sortItem('right')" id="btn-right" class="flex-1 bg-gradient-to-b from-gray-400 to-gray-600 text-white text-3xl py-8 rounded-3xl shadow-xl transform transition active:scale-95 border-4 border-white/50">
+            🪨 非生物
+        </button>
+    </div>
+
+    <!-- Message Modal -->
+    <div id="message-modal" class="hidden absolute inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl text-center transform transition-all max-w-sm w-full">
+            <div class="text-6xl mb-4">🎉</div>
+            <h2 class="text-3xl font-bold text-pink-500 mb-4">太棒啦！</h2>
+            <p class="text-xl text-gray-600 mb-6">你完成了这一关的分类！</p>
+            <button onclick="nextLevel()" class="w-full bg-pink-500 text-white text-2xl py-3 rounded-full shadow-md">下一关 🚀</button>
+        </div>
+    </div>
+
+    <script>
+        // Levels Data
+        const levels = [
+            {
+                title: "关卡 1: 生物 vs 非生物",
+                leftBtn: "🌿 生物", leftVal: "living",
+                rightBtn: "🪨 非生物", rightVal: "nonliving",
+                items: [
+                    { emoji: "🐶", name: "小狗", type: "living" },
+                    { emoji: "🧸", name: "玩具熊", type: "nonliving" },
+                    { emoji: "🌻", name: "向日葵", type: "living" },
+                    { emoji: "🚗", name: "汽车", type: "nonliving" },
+                    { emoji: "👶", name: "婴儿", type: "living" },
+                    { emoji: "📚", name: "书本", type: "nonliving" }
+                ]
+            },
+            {
+                title: "关卡 2: 能否被磁铁吸引",
+                leftBtn: "🧲 能吸引", leftVal: "magnetic",
+                rightBtn: "❌ 不能吸引", rightVal: "nonmagnetic",
+                items: [
+                    { emoji: "🔩", name: "铁钉", type: "magnetic" },
+                    { emoji: "✏️", name: "铅笔", type: "nonmagnetic" },
+                    { emoji: "📎", name: "回形针", type: "magnetic" },
+                    { emoji: "🧽", name: "海绵", type: "nonmagnetic" },
+                    { emoji: "🔑", name: "铁钥匙", type: "magnetic" },
+                    { emoji: "👕", name: "衣服", type: "nonmagnetic" }
+                ]
+            },
+            {
+                title: "关卡 3: 能否吸水",
+                leftBtn: "💧 能吸水", leftVal: "absorb",
+                rightBtn: "☔ 不能吸水", rightVal: "nonabsorb",
+                items: [
+                    { emoji: "🧻", name: "纸巾", type: "absorb" },
+                    { emoji: "🛍️", name: "塑料袋", type: "nonabsorb" },
+                    { emoji: "🧽", name: "海绵", type: "absorb" },
+                    { emoji: "🪟", name: "玻璃窗", type: "nonabsorb" },
+                    { emoji: "🧦", name: "棉袜子", type: "absorb" },
+                    { emoji: "☂️", name: "雨伞", type: "nonabsorb" }
+                ]
+            }
+        ];
+
+        let currentLevel = 0;
+        let currentItemIndex = 0;
+        let score = 0;
+        let activeItems = [];
+        let currentItem = null;
+
+        const elItem = document.getElementById('active-item');
+        const elName = document.getElementById('item-name');
+        const elTitle = document.getElementById('topic-title');
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+        const elScore = document.getElementById('score');
+
+        function initLevel() {
+            const levelData = levels[currentLevel];
+            elTitle.innerText = levelData.title;
+            btnLeft.innerText = levelData.leftBtn;
+            btnRight.innerText = levelData.rightBtn;
+            
+            // Shuffle items
+            activeItems = [...levelData.items].sort(() => Math.random() - 0.5);
+            currentItemIndex = 0;
+            loadItem();
+        }
+
+        function loadItem() {
+            if (currentItemIndex >= activeItems.length) {
+                document.getElementById('message-modal').classList.remove('hidden');
+                return;
+            }
+
+            currentItem = activeItems[currentItemIndex];
+            elItem.innerText = currentItem.emoji;
+            elName.innerText = currentItem.name;
+            
+            // Reset animations
+            elItem.className = "text-9xl bg-white/80 p-8 rounded-full shadow-2xl flex items-center justify-center w-48 h-48 border-4 border-dashed border-purple-400";
+            void elItem.offsetWidth; // trigger reflow
+            elItem.classList.add('item-enter');
+        }
+
+        function sortItem(direction) {
+            if (!currentItem) return;
+            const levelData = levels[currentLevel];
+            
+            let isCorrect = false;
+            if (direction === 'left' && currentItem.type === levelData.leftVal) isCorrect = true;
+            if (direction === 'right' && currentItem.type === levelData.rightVal) isCorrect = true;
+
+            if (isCorrect) {
+                // Correct
+                score += 10;
+                elScore.innerText = score;
+                elItem.classList.remove('item-enter');
+                elItem.classList.add(direction === 'left' ? 'item-leave-left' : 'item-leave-right');
+                
+                setTimeout(() => {
+                    currentItemIndex++;
+                    loadItem();
+                }, 500);
+            } else {
+                // Wrong
+                elItem.classList.remove('item-enter');
+                void elItem.offsetWidth;
+                elItem.classList.add('shake');
+                elItem.style.borderColor = 'red';
+                setTimeout(() => {
+                    elItem.style.borderColor = '#c084fc'; // purple-400
+                }, 500);
+            }
+        }
+
+        function nextLevel() {
+            document.getElementById('message-modal').classList.add('hidden');
+            currentLevel++;
+            if (currentLevel >= levels.length) {
+                currentLevel = 0; // Loop back or show final screen
+                score = 0;
+                elScore.innerText = score;
+                alert("太棒了！你已经完成了所有分类任务，你是分类大师！我们重新开始吧。");
+            }
+            initLevel();
+        }
+
+        // Start game
+        initLevel();
+    </script>
+</body>
+</html>
